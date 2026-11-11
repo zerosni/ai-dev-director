@@ -45,9 +45,12 @@ async function getJSON(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok
 // ------------------------------------------------------------------ model
 const CLI={claude:'ANTHROPIC',antigravity:'GOOGLE',openai:'OPENAI'},CLI_OF={ANTHROPIC:'claude',GOOGLE:'antigravity',OPENAI:'openai'};
 let roleSettings=null,roleToken=null;                 // what the NEXT task will use (data/role_settings.json via /ops/roles)
+async function pollLocal(){try{const l=await getJSON('/ops/local'),c=$('top-local');if(!c)return;
+  c.hidden=!l.roles.length;c.textContent='로컬 LLM · '+l.model+' · '+l.roles.join('/')+' · '+(l.online?(l.model_ready?'ON':'모델 없음'):'OFF');
+  c.style.color=l.online&&l.model_ready?'#3df2c0':'#ff8a5c';c.title=l.online?'로컬 LLM 서버 응답 중':'Ollama가 꺼져 있습니다 (리뷰는 FAIL 처리됨)';}catch(e){}}
 async function pollRoles(){try{const r=await getJSON('/ops/roles');roleSettings=r.roles;roleToken=r.csrf;repaint();}catch(e){/* keep the last known roles */}}
 function assignment(){
-  if(roleSettings&&!isLiveNow())return {HEAD:CLI[roleSettings.head],BUILDER:CLI[roleSettings.builder],REVIEWER:CLI[roleSettings.reviewer]};
+  if(roleSettings&&!isLiveNow())return {HEAD:CLI[roleSettings.head]||DEFAULT_ASSIGN.HEAD,BUILDER:CLI[roleSettings.builder]||DEFAULT_ASSIGN.BUILDER,REVIEWER:CLI[roleSettings.reviewer]||DEFAULT_ASSIGN.REVIEWER};   // 'local' (config.yaml only) is shown in the top chip, not as a node
   const a={...DEFAULT_ASSIGN},prov=(status&&status.providers)||{};
   for(const [p,info] of Object.entries(prov))if(info&&ROLES.includes(info.role)&&AI[p])a[info.role]=p;
   return a;
@@ -55,7 +58,7 @@ function assignment(){
 function isLiveNow(){const a=activity||{};return (a.working_now||[]).length>0||(a.missions||[]).some(m=>m.live);}
 function openRoleMenu(label){
   const menu=$('role-menu'),slot=Number(label.dataset.slot),role=ROLES[slot];
-  if(!roleSettings||replay){return;}
+  if(!roleSettings||replay||Object.values(roleSettings).includes('local')){return;}   // role swap is for the three cloud AIs; a local role is set in config.yaml
   if(!menu.hidden&&menu.dataset.slot===String(slot)){menu.hidden=true;return;}
   menu.dataset.slot=String(slot);menu.replaceChildren(el('p',ROLE_KO[role]+' 를 맡을 AI'+(isLiveNow()?' · 진행 중인 작업은 그대로, 다음 작업부터 적용':'')));
   const key=role.toLowerCase();
@@ -392,7 +395,7 @@ function start(){
     if(e.key==='b'||e.key==='B'||e.key==='ㅠ')setBroadcast(!document.body.classList.contains('broadcast'));
     if(e.key==='r'||e.key==='R'||e.key==='ㄱ')startReplay();});
   setInterval(()=>{const d=new Date();$('top-clock').textContent=[d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');if(!replay)tickTimer();},1000);
-  pollActivity();pollStatus();pollChat();pollRoles();setInterval(pollRoles,8000);
+  pollActivity();pollStatus();pollChat();pollRoles();setInterval(pollRoles,8000);pollLocal();setInterval(pollLocal,10000);
   setInterval(pollActivity,3000);setInterval(pollStatus,6000);setInterval(pollChat,3000);
 }
 window.TrinityStage={model:()=>lastModel,replaying:()=>!!replay};

@@ -106,6 +106,9 @@ class CompanionHandler(d.DashboardHandler):
         if path == '/ops/roles':
             from core.role_settings import current
             return self._send_json({'roles': current(d.load_config()), 'csrf': self.server.bridge_token})
+        if path == '/ops/local':
+            from core.local_status import local_status
+            return self._send_json(local_status(d.load_config()))
         if path in STATIC_FILES:
             name = STATIC_FILES[path]
             body = (ROOT / 'console' / name).read_bytes()

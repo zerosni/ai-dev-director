@@ -73,3 +73,11 @@ def test_resolve_roles_keeps_local_reviewer(tmp_path):
     for strict in (False, True):
         out = pm.resolve_roles("claude", "codex", "local", strict=strict)
         assert out["reviewer_provider"] == "local"
+
+
+def test_local_status(server):
+    from core.local_status import local_status
+    cfg = {"local_llm": {"base_url": server, "model": "m"}, "reviewer": {"provider": "local"}, "head": {"provider": "claude"}}
+    assert local_status(cfg)["roles"] == ["REVIEWER"]
+    down = local_status({"local_llm": {"base_url": "http://127.0.0.1:1/v1"}}, timeout=1)
+    assert down["online"] is False and down["error"]
