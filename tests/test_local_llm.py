@@ -1,0 +1,61 @@
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+import pytest
+
+from agents.local_roles import LocalHead, LocalReviewer, check_base_url
+from schemas.order import OrderSchema
+
+
+class _H(BaseHTTPRequestHandler):
+    reply = '{"verdict":"pass","p0":[],"p1":[],"p2":[],"summary":"ok"}'
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers["Content-Length"]))
+        out = json.dumps({"choices": [{"message": {"content": _H.reply}}]}).encode()
+        self.send_response(200); self.send_header("Content-Length", str(len(out))); self.end_headers()
+        self.wfile.write(out)
+
+    def log_message(self, *a):
+        pass
+
+
+@pytest.fixture
+def server():
+    srv = HTTPServer(("127.0.0.1", 0), _H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{srv.server_port}/v1"
+    srv.shutdown()
+
+
+def test_rejects_non_loopback():
+    with pytest.raises(ValueError):
+        check_base_url("http://example.com/v1")
+
+
+def test_reviewer_pass_and_provenance(server):
+    _H.reply = '{"verdict":"pass","p0":[],"p1":[],"p2":[],"summary":"ok"}'
+    r = LocalReviewer(base_url=server, model="m")
+    order = OrderSchema(goal="g", allowed_paths=["a.py"], acceptance_criteria=["x"])
+    res = r.review(order, "diff", {})
+    assert res.verdict == "pass"
+    p = r.get_provenance()
+    assert p.provider == "local" and p.api_key_used is False and p.agent == "REVIEWER"
+
+
+def test_reviewer_fail_closed_on_garbage(server):
+    _H.reply = "not json"
+    order = OrderSchema(goal="g", allowed_paths=["a.py"], acceptance_criteria=["x"])
+    assert LocalReviewer(base_url=server).review(order, "d", {}).verdict == "changes_required"
+
+
+def test_reviewer_fail_closed_when_server_down():
+    order = OrderSchema(goal="g", allowed_paths=["a.py"], acceptance_criteria=["x"])
+    res = LocalReviewer(base_url="http://127.0.0.1:1/v1", timeout=2).review(order, "d", {})
+    assert res.verdict == "changes_required"
+
+
+def test_head_invoke(server):
+    _H.reply = "hello"
+    assert LocalHead(base_url=server)._invoke_cli("hi") == "hello"

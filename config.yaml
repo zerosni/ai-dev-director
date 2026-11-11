@@ -79,3 +79,12 @@ solomon:
     - "D:/work"
   denied:
     - "D:/work/ai-dev-director"
+
+# Local LLM (provider: local) for HEAD / REVIEWER roles, served on this machine's GPU (e.g. RTX 5080, 16 GB).
+# Use it by setting head.provider or reviewer.provider to "local". Loopback only; no cloud API involved.
+# Setup: ./setup-local-llm.sh   (installs Ollama and pulls the model)
+local_llm:
+  base_url: "http://127.0.0.1:11434/v1"   # Ollama; llama.cpp / vLLM servers also work if OpenAI-compatible
+  model: "qwen2.5-coder:14b"              # alternatives for 16 GB: "qwen3:14b", "gpt-oss:20b"
+  temperature: 0.1
+  num_ctx: 16384

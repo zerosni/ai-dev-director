@@ -49,6 +49,10 @@ class Orchestrator:
         self.builder = builder_agent or self._init_builder()
         self.reviewer = reviewer_agent or self._init_reviewer()
 
+    def _local_kwargs(self) -> Dict[str, Any]:
+        cfg = self.config.get("local_llm", {}) or {}
+        return {k: cfg[k] for k in ("base_url", "model", "temperature", "num_ctx") if k in cfg}
+
     def _init_head(self, provider_override: Optional[str] = None) -> BaseHead:
         head_cfg = self.config.get("head", {})
         provider = (provider_override or head_cfg.get("provider", "openai")).lower()
@@ -58,6 +62,9 @@ class Orchestrator:
         no_progress_timeout = self.timeouts.get("no_progress", 180)
         heartbeat_interval = self.timeouts.get("heartbeat", 30)
 
+        if provider == 'local':
+            from agents.local_roles import LocalHead
+            return LocalHead(timeout=timeout, no_progress_timeout=no_progress_timeout, **self._local_kwargs())
         if provider in ('google', 'antigravity'):
             from agents.google_roles import GoogleHead
             return GoogleHead(executable=executable, timeout=timeout, no_progress_timeout=no_progress_timeout)
@@ -95,6 +102,9 @@ class Orchestrator:
         no_progress_timeout = self.timeouts.get("no_progress", 180)
         heartbeat_interval = self.timeouts.get("heartbeat", 30)
 
+        if provider == 'local':
+            from agents.local_roles import LocalReviewer
+            return LocalReviewer(timeout=timeout, no_progress_timeout=no_progress_timeout, **self._local_kwargs())
         if provider in ('google', 'antigravity'):
             from agents.google_roles import GoogleReviewer
             return GoogleReviewer(executable=executable, timeout=timeout, no_progress_timeout=no_progress_timeout)
