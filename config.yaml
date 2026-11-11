@@ -3,15 +3,16 @@
 # (Claude Code / OpenAI Codex / Google Antigravity). API keys in the environment are stripped before any CLI call.
 
 head:
-  provider: claude        # HEAD plans and directs corrections; the Reviewer judges independently.
+  provider: codex         # HEAD plans and directs corrections (swapped with BUILDER on 2026-11-11); the Reviewer judges independently.
+  model: codex-cli
   # The model is whatever the CLI account's default model is; model flags are not passed through.
-  executable: null        # Discovered automatically (PATH or the standard install folder)
+  executable: null        # Discovered automatically via resolve_cli('codex')
 
 builder:
   mode: proposal          # Builder returns whole files as JSON; the Director validates and writes them.
-  provider: codex         # BUILDER: OpenAI Codex CLI (proposal JSON -> Director applies + tests)
-  model: codex-cli
-  executable: null        # Discovered automatically via resolve_cli('codex')
+  provider: claude        # BUILDER: Claude Code CLI (proposal JSON -> Director applies + tests)
+  model: claude-code-cli
+  executable: null        # Discovered automatically via resolve_cli('claude')
 
 reviewer:
   provider: antigravity   # REVIEWER: Google Antigravity CLI (independent review of diff + Verifier evidence)
