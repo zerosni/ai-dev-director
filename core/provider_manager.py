@@ -606,7 +606,7 @@ class ProviderManager:
         if strict:
             from core.role_settings import ALIASES, DOMAINS
             missing = [DOMAINS[ALIASES[p.lower()]] for p in (requested_head, requested_builder, requested_reviewer)
-                       if DOMAINS[ALIASES[p.lower()]] not in usable]
+                       if ALIASES[p.lower()] in DOMAINS and DOMAINS[ALIASES[p.lower()]] not in usable]
             if missing:
                 assigned['can_proceed'] = False
                 assigned['reason'] = 'Manually selected CLI unavailable: ' + ', '.join(missing)
@@ -627,6 +627,12 @@ class ProviderManager:
             assigned["reviewer_provider"] = "codex"
             assigned["reason"] = "Anthropic unavailable. Degraded mode active: OpenAI handling Head & Reviewer."
 
+        # A local LLM role never depends on cloud health: keep it even when failover rewrote other roles.
+        if (requested_head or "").lower() == "local":
+            assigned["head_provider"] = "local"
+        if (requested_reviewer or "").lower() == "local":
+            assigned["reviewer_provider"] = "local"
+
         # Update roles in DB
         try:
             with self._get_conn() as conn:
@@ -644,7 +650,9 @@ class ProviderManager:
                 
                 from core.role_settings import ALIASES, DOMAINS
                 for role in ('head', 'builder', 'reviewer'):
-                    role_map[DOMAINS[ALIASES[assigned[role + '_provider'].lower()]]].append(role.upper())
+                    alias = ALIASES[assigned[role + '_provider'].lower()]
+                    if alias in DOMAINS:   # 'local' LLM has no cloud domain row
+                        role_map[DOMAINS[alias]].append(role.upper())
                     
                 for prov, roles in role_map.items():
                     role_str = ", ".join(roles) if roles else "BACKUP" if prov == "ANTHROPIC" else "NONE"

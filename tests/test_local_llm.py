@@ -59,3 +59,17 @@ def test_reviewer_fail_closed_when_server_down():
 def test_head_invoke(server):
     _H.reply = "hello"
     assert LocalHead(base_url=server)._invoke_cli("hi") == "hello"
+
+
+def test_role_settings_current_accepts_local():
+    from core.role_settings import current
+    cfg = {"head": {"provider": "claude"}, "builder": {"provider": "codex"}, "reviewer": {"provider": "local"}}
+    assert current(cfg)["reviewer"] == "local"
+
+
+def test_resolve_roles_keeps_local_reviewer(tmp_path):
+    from core.provider_manager import ProviderManager
+    pm = ProviderManager(db_path=str(tmp_path / "pm.db"))
+    for strict in (False, True):
+        out = pm.resolve_roles("claude", "codex", "local", strict=strict)
+        assert out["reviewer_provider"] == "local"

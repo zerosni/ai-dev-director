@@ -7,7 +7,8 @@ from pathlib import Path
 PATH = Path(__file__).resolve().parent.parent / 'data' / 'role_settings.json'
 LOCK = threading.Lock()
 ALIASES = {'codex': 'openai', 'openai': 'openai', 'claude': 'claude',
-           'anthropic': 'claude', 'google': 'antigravity', 'antigravity': 'antigravity'}
+           'anthropic': 'claude', 'google': 'antigravity', 'antigravity': 'antigravity',
+           'local': 'local'}   # local LLM: config.yaml only, no cloud domain (not in DOMAINS)
 DOMAINS = {'openai': 'OPENAI', 'claude': 'ANTHROPIC', 'antigravity': 'GOOGLE'}
 
 def validate(roles):
