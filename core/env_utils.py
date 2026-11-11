@@ -41,6 +41,13 @@ def resolve_cli(name: str) -> Optional[str]:
                     return str(candidates[0].resolve())
             except OSError:
                 pass
+    override = os.environ.get(name.upper() + "_BIN")       # e.g. AGY_BIN=C:\\tools\\agy.cmd (set by setup-antigravity.ps1)
+    if override and os.environ.get('DIRECTOR_TESTING') != '1':
+        try:
+            if Path(override).is_file():
+                return str(Path(override).resolve())
+        except (PermissionError, OSError):
+            pass
     try:
         p = shutil.which(name)
     except (PermissionError, OSError):

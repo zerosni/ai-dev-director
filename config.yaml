@@ -9,14 +9,14 @@ head:
 
 builder:
   mode: proposal          # Builder returns whole files as JSON; the Director validates and writes them.
-  provider: antigravity   # Primary BUILDER: Google Antigravity CLI (failover: codex / claude)
-  model: antigravity-cli
-  executable: null        # Discovered automatically via resolve_cli('agy')
-
-reviewer:
-  provider: codex         # Primary REVIEWER: OpenAI Codex CLI (failover: claude)
+  provider: codex         # BUILDER: OpenAI Codex CLI (proposal JSON -> Director applies + tests)
   model: codex-cli
   executable: null        # Discovered automatically via resolve_cli('codex')
+
+reviewer:
+  provider: antigravity   # REVIEWER: Google Antigravity CLI (independent review of diff + Verifier evidence)
+  model: antigravity-cli  # If 'agy' is missing/down the ProviderManager fails over (reviewer -> claude); run setup-antigravity.ps1
+  executable: null        # Discovered via resolve_cli('agy'); override with env AGY_BIN=<full path>
 
 timeouts:
   head: 300
